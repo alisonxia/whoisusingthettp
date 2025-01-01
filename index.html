@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Who's using the TTP?
+    </title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+        }
+        .status-container {
+            margin: 20px 0;
+        }
+        .user-button {
+            display: inline-block;
+            padding: 10px 20px;
+            font-size: 16px;
+            margin: 10px;
+            cursor: pointer;
+            border: none;
+            color: white;
+            background-color: grey;
+            border-radius: 5px;
+        }
+        .user-button.in-use {
+            background-color: green;
+        }
+    </style>
+</head>
+<body>
+    <h1>Target Test Prep Use</h1>
+    <div class="status-container">
+        <button id="alison-btn" class="user-button" onclick="toggleStatus('Alison')">Alison</button>
+        <button id="karen-btn" class="user-button" onclick="toggleStatus('Karen')">Karen</button>
+        <button id="amy-btn" class="user-button" onclick="toggleStatus('Amy')">Amy</button>
+    </div>
+    <div class="status" id="status">Loading...</div>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+        const buttons = {
+            Alison: document.getElementById('alison-btn'),
+            Karen: document.getElementById('karen-btn'),
+            Amy: document.getElementById('amy-btn'),
+        };
+
+        // Fetch the current status from the server
+        function getStatus() {
+            fetch('http://localhost:3000/status')
+                .then(response => response.json())
+                .then(data => {
+                    // Update buttons based on the current status
+                    for (const user in buttons) {
+                        if (data.user === user) {
+                            buttons[user].classList.add('in-use');
+                        } else {
+                            buttons[user].classList.remove('in-use');
+                        }
+                    }
+                    statusDiv.textContent = data.status + (data.user ? ` by ${data.user}` : '');
+                })
+                .catch(err => {
+                    statusDiv.textContent = "Error fetching status.";
+                    console.error(err);
+                });
+        }
+
+        // Toggle the status for a specific user
+        function toggleStatus(user) {
+            const isInUse = buttons[user].classList.contains('in-use');
+            if (isInUse) {
+                // If the button is already green, release the status
+                resetStatus();
+            } else {
+                // If the button is grey, claim the status
+                claimStatus(user);
+            }
+        }
+
+        // Claim the status for a user
+        function claimStatus(user) {
+            fetch('http://localhost:3000/status', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ user })
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error("Failed to claim status");
+                    }
+                    return response.json();
+                })
+                .then(() => {
+                    getStatus();
+                })
+                .catch(err => {
+                    alert("Status is already claimed!");
+                    console.error(err);
+                });
+        }
+
+        // Release the status
+        function resetStatus() {
+            fetch('http://localhost:3000/status', {
+                method: 'DELETE'
+            })
+                .then(response => response.json())
+                .then(() => {
+                    getStatus();
+                })
+                .catch(err => {
+                    statusDiv.textContent = "Error resetting status.";
+                    console.error(err);
+                });
+        }
+
+        // Initial fetch of the status
+        getStatus();
+    </script>
+</body>
+</html>
